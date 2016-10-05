@@ -1,4 +1,4 @@
-package: github.com/vitorsalgado/la-democracia/lowerhouse-projects
+package: projects
 import:
 - package: github.com/joho/godotenv
 - package: github.com/labstack/echo

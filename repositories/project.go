@@ -1,29 +1,18 @@
-package services
+package repositories
 
 import (
 	"fmt"
+	"log"
 
+	"github.com/deputadosemfoco/go-libs/caching/keys"
+	"github.com/deputadosemfoco/go-libs/redisdb"
+	"github.com/deputadosemfoco/projects/models"
 	"github.com/jmoiron/sqlx"
-	"github.com/vitorsalgado/la-democracia/lib/go/caching/keys"
-	"github.com/vitorsalgado/la-democracia/lib/go/redisdb"
-	"github.com/vitorsalgado/la-democracia/lib/go/sqldb"
-	"github.com/vitorsalgado/la-democracia/projects-reader/models"
 )
 
-type (
-	ProjectReader interface {
-		List(ids []int) []models.Project
-	}
+type ProjectRepository struct{}
 
-	ProjectReaderImpl struct {
-	}
-)
-
-func NewProjectReader() *ProjectReaderImpl {
-	return &ProjectReaderImpl{}
-}
-
-func (projectReader *ProjectReaderImpl) List(ids []int64) []models.Project {
+func (repository *ProjectRepository) List(ids []int64) []models.Project {
 	list := fetchFromRedis(ids)
 
 	if list == nil || len(list) == 0 {
@@ -79,7 +68,7 @@ func fetchFromRedis(ids []int64) []models.Project {
 }
 
 func fetchFromSQL(ids []int64) []models.Project {
-	db := sqldb.Connect()
+	db := Connect()
 	resp := []models.Project{}
 
 	sql := fmt.Sprintf(
@@ -90,4 +79,31 @@ func fetchFromSQL(ids []int64) []models.Project {
 	db.Select(&resp, query, args...)
 
 	return resp
+}
+
+func writeProject(projects []models.Project) {
+	c, _ := redisdb.Connect()
+
+	for _, project := range projects {
+		c.PipeAppend("HMSET", fmt.Sprintf("%s:%s", keys.ProjectKEY, project.ID),
+			keys.ProjectID, project.ID,
+			keys.ProjectName, project.Name,
+			keys.ProjectBriefing, project.Briefing,
+			keys.ProjectExplanation, project.Explanation,
+			keys.ProjectYear, project.Year,
+			keys.ProjectType, project.Type,
+			keys.ProjectTypeDescription, project.TypeDescription,
+			keys.ProjectAuthorID, project.AuthorID,
+			keys.ProjectAuthor, project.Author,
+			keys.ProjectParty, project.Party,
+			keys.ProjectPartyName, project.PartyName,
+			keys.ProjectPresentedAt, project.PresentedAt,
+			keys.ProjectSituation, project.Situation)
+	}
+
+	err := c.PipeResp().Err
+
+	if err != nil {
+		log.Println(err)
+	}
 }

@@ -2,30 +2,31 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
+	"github.com/deputadosemfoco/go-libs/redisdb"
+	"github.com/deputadosemfoco/projects/repositories"
+	"github.com/deputadosemfoco/projects/routes"
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/engine/standard"
-	"github.com/vitorsalgado/la-democracia/lib/go/redisdb"
-	"github.com/vitorsalgado/la-democracia/projects-reader/routes"
 )
 
 func main() {
-	err := godotenv.Load()
+	godotenv.Load()
 
-	if err != nil {
-		log.Fatalf("%s : %s", "Error loading .env file", err)
-	}
+	in, _ := os.Open("banner.txt")
+	defer in.Close()
+	banner.Init(os.Stdout, true, false, in)
 
-	router := routes.Router{}
-	e := router.SetUp()
-	port := os.Getenv("Projects_Reader_Port")
+	e := routes.SetUp()
+	port := os.Getenv("PORT")
 
 	_redis, _ := redisdb.Connect()
 	defer _redis.Close()
+
+	repositories.Bootstrap()
 
 	fmt.Println(fmt.Sprintf("projects reader service running on port %s", port))
 
